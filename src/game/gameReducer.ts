@@ -2,7 +2,8 @@ import type { ColorId } from './colors';
 import { TOTAL_ROUNDS } from './constants';
 
 // 'advancing' is the short hold after a round is completed, before the next round is shown (ADR-10).
-export type GameStatus = 'idle' | 'presenting' | 'awaitingInput' | 'advancing' | 'won' | 'lost';
+// 'paused' keeps the sequence and round in memory until the player resumes (ADR-3).
+export type GameStatus = 'idle' | 'presenting' | 'awaitingInput' | 'advancing' | 'paused' | 'won' | 'lost';
 
 export type GameState = {
   status: GameStatus;
@@ -20,8 +21,9 @@ export type GameAction =
   | { type: 'press'; color: ColorId }
   | { type: 'nextRound'; nextColor: ColorId }
   | { type: 'dismiss' }
-  // Temporary until Milestone 3 replaces it with a real pause (ADR-3).
-  | { type: 'abandon' };
+  // nextColor is used only when pausing during 'advancing' (ADR-11).
+  | { type: 'pause'; nextColor: ColorId }
+  | { type: 'resume' };
 
 export const initialGameState: GameState = {
   status: 'idle',
@@ -33,12 +35,9 @@ export const initialGameState: GameState = {
   presentationId: 0,
 };
 
+// A game that is running right now and can be paused.
 export function isGameActive(status: GameStatus): boolean {
   return status === 'presenting' || status === 'awaitingInput' || status === 'advancing';
-}
-
-function resetKeepingIds(state: GameState, presentationId: number): GameState {
-  return { ...initialGameState, gameId: state.gameId, presentationId };
 }
 
 // Pure: no audio, timers or storage. Actions that are not valid in the current status return the same state.
@@ -86,10 +85,26 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'dismiss':
       if (state.status !== 'won' && state.status !== 'lost') return state;
-      return resetKeepingIds(state, state.presentationId);
+      return { ...initialGameState, gameId: state.gameId, presentationId: state.presentationId };
 
-    case 'abandon':
-      if (!isGameActive(state.status)) return state;
-      return resetKeepingIds(state, state.presentationId + 1);
+    case 'pause':
+      // The completed round is kept: pause with the next round already prepared (ADR-11).
+      if (state.status === 'advancing') {
+        return {
+          ...state,
+          status: 'paused',
+          sequence: [...state.sequence, action.nextColor],
+          round: state.round + 1,
+          inputIndex: 0,
+          presentationId: state.presentationId + 1,
+        };
+      }
+      if (state.status !== 'presenting' && state.status !== 'awaitingInput') return state;
+      // Partial input is dropped; the new presentationId makes any running playback stale.
+      return { ...state, status: 'paused', inputIndex: 0, presentationId: state.presentationId + 1 };
+
+    case 'resume':
+      if (state.status !== 'paused') return state;
+      return { ...state, status: 'presenting', inputIndex: 0, presentationId: state.presentationId + 1 };
   }
 }

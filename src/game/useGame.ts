@@ -3,7 +3,7 @@ import { playLoss, playWin, startTone, stopAll, unlockAudio, type ToneHandle } f
 import { clearConfetti, fireWinConfetti } from '../effects/confetti';
 import type { ColorId } from './colors';
 import { GAP_MS, LEAD_IN_MS, PRESS_MIN_MS, RESULT_DELAY_MS, ROUND_HOLD_MS, TONE_MS } from './constants';
-import { gameReducer, initialGameState } from './gameReducer';
+import { gameReducer, initialGameState, isGameActive } from './gameReducer';
 import { randomColor } from './random';
 import { sleep } from './sleep';
 
@@ -134,16 +134,42 @@ export function useGame() {
 
   const dismiss = useCallback(() => dispatch({ type: 'dismiss' }), []);
 
-  // Temporary (Milestone 2): leaving to "אודות" cancels the running game (ADR-3).
-  const abandon = useCallback(() => {
+  // Leaving to "אודות" or hiding the app: stop light and sound now; the effects' cleanups cancel the timers (ADR-3).
+  const pause = useCallback(() => {
+    if (!isGameActive(status)) return;
     endPress();
     stopAll();
-    dispatch({ type: 'abandon' });
-  }, [endPress]);
+    dispatch({ type: 'pause', nextColor: randomColor() });
+  }, [status, endPress]);
+
+  // "המשך משחק" is an audio gesture; the full sequence of the same round is presented again.
+  const resume = useCallback(async () => {
+    if (status !== 'paused') return;
+    const unlocked = await unlockAudio();
+    setAudioError(!unlocked);
+    // Stay paused if the app was hidden while waiting for audio.
+    if (unlocked && document.visibilityState !== 'hidden') dispatch({ type: 'resume' });
+  }, [status]);
+
+  // Hiding the app pauses; becoming visible again does nothing (no automatic resume).
+  const pauseRef = useRef(pause);
+  pauseRef.current = pause;
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') pauseRef.current();
+    };
+    const onPageHide = () => pauseRef.current();
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pagehide', onPageHide);
+    };
+  }, []);
 
   const resultVisible = (status === 'won' || status === 'lost') && revealedGameId === gameId;
 
-  return { state, activeColor, audioError, resultVisible, start, pressColor, dismiss, abandon };
+  return { state, activeColor, audioError, resultVisible, start, pressColor, dismiss, pause, resume };
 }
 
 export type Game = ReturnType<typeof useGame>;

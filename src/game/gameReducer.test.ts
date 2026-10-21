@@ -104,12 +104,62 @@ describe('gameReducer', () => {
     expect(next.sequence).toEqual(['yellow']);
   });
 
-  it('abandon cancels an active game but not a finished one', () => {
-    const presenting = gameReducer(initialGameState, { type: 'start', firstColor: 'green' });
-    expect(gameReducer(presenting, { type: 'abandon' })).toMatchObject({ status: 'idle', round: 1, sequence: [] });
-    expect(gameReducer(reachRound(2), { type: 'abandon' }).status).toBe('idle');
+  it('pauses during the presentation and during input, keeping round and sequence and dropping partial input', () => {
+    const presenting = gameReducer(reachRound(2), { type: 'nextRound', nextColor: 'yellow' });
+    const pausedFromPresenting = gameReducer(presenting, { type: 'pause', nextColor: 'blue' });
+    expect(pausedFromPresenting).toMatchObject({ status: 'paused', round: presenting.round, sequence: presenting.sequence });
+    expect(pausedFromPresenting.presentationId).toBe(presenting.presentationId + 1);
 
+    let input = reachRound(3);
+    input = gameReducer(input, { type: 'press', color: input.sequence[0] });
+    expect(input.inputIndex).toBe(1);
+    const paused = gameReducer(input, { type: 'pause', nextColor: 'blue' });
+    expect(paused).toMatchObject({
+      status: 'paused',
+      round: 3,
+      sequence: input.sequence,
+      inputIndex: 0,
+      gameId: input.gameId,
+      completedRounds: input.completedRounds,
+    });
+  });
+
+  it('pausing while advancing keeps the completed round and prepares the next one', () => {
+    const advancing = pressAll(reachRound(3));
+    const paused = gameReducer(advancing, { type: 'pause', nextColor: 'blue' });
+    expect(paused).toMatchObject({ status: 'paused', round: 4, sequence: [...advancing.sequence, 'blue'], inputIndex: 0 });
+    expect(gameReducer(paused, { type: 'nextRound', nextColor: 'red' })).toBe(paused);
+  });
+
+  it('ignores presses and stale presentation ends while paused', () => {
+    const presenting = gameReducer(initialGameState, { type: 'start', firstColor: 'green' });
+    const paused = gameReducer(presenting, { type: 'pause', nextColor: 'blue' });
+    expect(gameReducer(paused, { type: 'press', color: 'green' })).toBe(paused);
+    expect(gameReducer(paused, { type: 'presentationDone', presentationId: presenting.presentationId })).toBe(paused);
+    expect(gameReducer(paused, { type: 'pause', nextColor: 'blue' })).toBe(paused);
+  });
+
+  it('resume presents the same full sequence again in the same round', () => {
+    let state = reachRound(4);
+    state = gameReducer(state, { type: 'press', color: state.sequence[0] });
+    const paused = gameReducer(state, { type: 'pause', nextColor: 'blue' });
+    const resumed = gameReducer(paused, { type: 'resume' });
+    expect(resumed).toMatchObject({ status: 'presenting', round: 4, sequence: state.sequence, inputIndex: 0, gameId: state.gameId });
+    expect(resumed.presentationId).toBe(paused.presentationId + 1);
+    expect(gameReducer(resumed, { type: 'resume' })).toBe(resumed);
+    // The presentation that was running before the pause can no longer complete.
+    expect(gameReducer(resumed, { type: 'presentationDone', presentationId: state.presentationId })).toBe(resumed);
+    expect(present(resumed)).toMatchObject({ status: 'awaitingInput', inputIndex: 0 });
+  });
+
+  it('pause and resume do not affect a game that has not started or has ended', () => {
+    expect(gameReducer(initialGameState, { type: 'pause', nextColor: 'blue' })).toBe(initialGameState);
+    expect(gameReducer(initialGameState, { type: 'resume' })).toBe(initialGameState);
     const won = pressAll(reachRound(10));
-    expect(gameReducer(won, { type: 'abandon' })).toBe(won);
+    expect(gameReducer(won, { type: 'pause', nextColor: 'blue' })).toBe(won);
+    const round1 = reachRound(1);
+    const lost = gameReducer(round1, { type: 'press', color: wrongColor(round1.sequence[0]) });
+    expect(gameReducer(lost, { type: 'pause', nextColor: 'blue' })).toBe(lost);
+    expect(gameReducer(lost, { type: 'resume' })).toBe(lost);
   });
 });
