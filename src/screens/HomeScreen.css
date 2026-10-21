@@ -16,7 +16,21 @@
   color: var(--color-soft-gray);
 }
 
+.home-screen__board {
+  position: relative;
+}
+
+/* Fixed height so the board does not jump when the button/hint changes. */
 .home-screen__action {
   width: 100%;
+  min-height: 56px;
   margin-top: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-screen__hint {
+  font: var(--font-body);
+  color: var(--color-soft-gray);
 }

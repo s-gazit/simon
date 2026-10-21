@@ -1,0 +1,38 @@
+/* End-of-game card over the board; the board stays visible around it (DESIGN.md §1.1). */
+.result-overlay {
+  position: absolute;
+  inset: 16% -8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-3);
+  border: 1.5px solid rgba(0, 163, 255, 0.6);
+  border-radius: 20px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+  text-align: center;
+}
+
+.result-overlay__title {
+  font: var(--font-h1);
+}
+
+.result-overlay__title span {
+  display: block;
+}
+
+.result-overlay--win .result-overlay__accent {
+  color: var(--color-green);
+}
+
+.result-overlay--loss .result-overlay__accent {
+  color: var(--color-red);
+}
+
+.result-overlay__detail {
+  font: var(--font-h3);
+  font-weight: 400;
+  color: var(--color-soft-gray);
+}
