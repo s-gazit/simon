@@ -1,0 +1,21 @@
+.primary-button {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  min-height: 52px;
+  margin: 0 auto;
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-blue);
+  color: var(--color-white);
+  font: var(--font-button);
+  box-shadow: 0 4px 0 #0079c2, var(--shadow-soft);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.primary-button:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #0079c2, var(--shadow-soft);
+}

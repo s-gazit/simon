@@ -1,0 +1,34 @@
+:root {
+  /* Colors (DESIGN.md §2.1) */
+  --color-green: #00d26a;
+  --color-red: #ff3b30;
+  --color-yellow: #ffd600;
+  --color-blue: #00a3ff;
+  --color-charcoal: #0f0f0f;
+  --color-soft-gray: #e5e5e5;
+  --color-white: #ffffff;
+  --color-bg: #0a1628;
+  --color-surface: #12213a;
+  --color-border: #1e3556;
+
+  /* Typography (DESIGN.md §2.2) */
+  --font-family: 'Heebo', Arial, sans-serif;
+  --font-h1: 700 32px/1.2 var(--font-family);
+  --font-h2: 700 24px/1.3 var(--font-family);
+  --font-h3: 600 20px/1.4 var(--font-family);
+  --font-body: 400 16px/1.6 var(--font-family);
+  --font-caption: 400 14px/1.5 var(--font-family);
+  --font-button: 600 16px/1.2 var(--font-family);
+
+  /* Spacing scale (DESIGN.md §2.4) */
+  --space-1: 8px;
+  --space-2: 12px;
+  --space-3: 16px;
+  --space-4: 24px;
+
+  --radius-card: 16px;
+  --radius-pill: 999px;
+  --shadow-soft: 0 6px 18px rgba(0, 0, 0, 0.35);
+
+  --app-max-width: 480px;
+}
